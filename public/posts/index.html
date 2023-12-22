@@ -4,10 +4,13 @@
     
     <script type="application/ld+json">
 
-{  
-  "@context":"http://schema.org",
-  "@type":"Website",
-  "@id":"https:\/\/example.org\/",
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Posts",
+  
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "2023-12-22T21:22:33+08:00",
   "author": {
     "@type": "Person",
     "name": "Chiiydd",
@@ -15,10 +18,22 @@
     "image": "https://example.org/images/photo.jpg"
     
   },
-  "name":"Chiiydd\u0027s Blog",
-  "description":"Chiiydd\u0027s Blog",
-  "url":"https:\/\/example.org\/",
-  "keywords":"[]"
+  "mainEntityOfPage": { 
+    "@type": "WebPage",
+    "@id": "https:\/\/example.org\/posts\/" 
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Chiiydd's Blog",
+    
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://example.org/images/photo.jpg"
+    }
+    
+  },
+  "description": "",
+  "keywords": []
 }
 
 </script>
@@ -33,10 +48,10 @@
 
 <meta property="og:description" content="Chiiydd&#39;s Blog">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Chiiydd&#39;s Blog">
-<meta name="twitter:title" content="Chiiydd&#39;s Blog">
-<meta property="og:url" content="https://example.org/">
-<meta property="twitter:url" content="https://example.org/">
+<meta property="og:title" content="Posts">
+<meta name="twitter:title" content="Posts">
+<meta property="og:url" content="https://example.org/posts/">
+<meta property="twitter:url" content="https://example.org/posts/">
 <meta property="og:site_name" content="Chiiydd&#39;s Blog">
 <meta property="og:description" content="Chiiydd&#39;s Blog">
 <meta name="twitter:description" content="Chiiydd&#39;s Blog">
@@ -59,16 +74,16 @@
 
 
 
-    <title>Chiiydd&#39;s Blog</title>
+    <title>Posts</title>
 
     <link rel="icon" href="https://example.org/favicon.png">
     
-      <link rel="alternate" type="application/rss+xml" title="RSS" href="https://example.org/index.xml">
+      <link rel="alternate" type="application/rss+xml" title="RSS" href="https://example.org/posts/index.xml">
     
 
     
 
-    <link rel="canonical" href="https://example.org/">
+    <link rel="canonical" href="https://example.org/posts/">
 
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -203,6 +218,7 @@
                hasCoverMetaIn
                ">
         <section class="postShorten-group main-content-wrap">
+          
           
           
             

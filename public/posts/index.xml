@@ -6,14 +6,14 @@
     <description>Recent content in Posts on Chiiydd&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Fri, 22 Dec 2023 21:22:33 +0800</lastBuildDate>
+    <lastBuildDate>Fri, 22 Dec 2023 22:31:54 +0800</lastBuildDate>
     <atom:link href="https://chiiydd.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Test</title>
-      <link>https://chiiydd.github.io/2023/12/test/</link>
-      <pubDate>Fri, 22 Dec 2023 21:22:33 +0800</pubDate>
-      <guid>https://chiiydd.github.io/2023/12/test/</guid>
-      <description>this is a test blog.</description>
+      <title>Booting</title>
+      <link>https://chiiydd.github.io/2023/12/booting/</link>
+      <pubDate>Fri, 22 Dec 2023 22:31:54 +0800</pubDate>
+      <guid>https://chiiydd.github.io/2023/12/booting/</guid>
+      <description>OSV的启动流程 常见的操作系统启动流程&#xA;ROM -&amp;gt;LOADER -&amp;gt;RUNTIME &amp;mdash;&amp;gt;BOOTLOADER -&amp;gt;OS&#xA;机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。&#xA;硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：&#xA;第一部分为引导（PRE-BOOT）区，占了446个字节；&#xA;第二部分为分区表（PARTITION TABLE），共有64个字节，记录硬盘的分区信息。&#xA;预引导区的作用之一是找到标记为活动（ACTIVE）的分区，并将活动分区的引导区读入内存。剩余两个字节(0x55,0xaa)为结束标记。&#xA;osv-boot 在osv中 boot16.S即为一般计算机上的MBR，&#xA;首先其入口点为start,跳转到init&#xA;start: ljmp $0, $init init: rdtsc ## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中 mov %eax, mb_tsc1_lo ##保存时间戳低位 mov %edx, mb_tsc1_hi ## 保存时间戳高位 xor %ax, %ax ##将ax 置0 mov %ax, %ds ## ds es ss寄存器置0 mov %ax, %es mov %ax, %ss mov $0x7c00, %sp ## 初始化栈寄存器为0x7c00 mov $0x2401, %ax # enable a20 gate int $0x15 ## 向BIOS中断0x15传递0x2401参数，启用A20门，它会影响内存地址线的第20位，允许访问1MB以上的内存 lea int1342_boot_struct, %si ##将int1342_boot_struct的地址加载到si索引寄存器中 mov $0x42, %ah ## ah=0x42表示从硬盘中读取数据 mov $0x80, %dl ## dl中表示硬盘drive index,0x80表示第一个硬盘 int $0x13 movl $cmdline, mb_cmdline 继续从硬盘中读取数据</description>
     </item>
   </channel>
 </rss>

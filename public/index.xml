@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Chiiydd&#39;s Blog</title>
-    <link>https://example.org/</link>
+    <link>https://chiiydd.github.io/</link>
     <description>Recent content on Chiiydd&#39;s Blog</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Fri, 22 Dec 2023 21:22:33 +0800</lastBuildDate>
-    <atom:link href="https://example.org/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://chiiydd.github.io/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Test</title>
-      <link>https://example.org/2023/12/test/</link>
+      <link>https://chiiydd.github.io/2023/12/test/</link>
       <pubDate>Fri, 22 Dec 2023 21:22:33 +0800</pubDate>
-      <guid>https://example.org/2023/12/test/</guid>
+      <guid>https://chiiydd.github.io/2023/12/test/</guid>
       <description>this is a test blog.</description>
     </item>
   </channel>

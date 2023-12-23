@@ -223,9 +223,9 @@
     <div class="postShorten-header">
       <h1 class="postShorten-title">
       
-        <a class="link-unstyled" href="https://chiiydd.github.io/2023/12/booting/" aria-label="Open the post: Booting">
+        <a class="link-unstyled" href="https://chiiydd.github.io/2023/12/osv%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90-boot16.s/" aria-label="Open the post: OSV启动流程分析-boot16.S">
       
-          Booting
+          OSV启动流程分析-boot16.S
         </a>
       </h1>
       
@@ -251,7 +251,7 @@
     </div>
     <div class="postShorten-excerpt">
       
-        OSV的启动流程 常见的操作系统启动流程
+        Table of Contents OSV的启动流程 osv-boot A20总线 Reference OSV的启动流程 常见的操作系统启动流程
 ROM -&gt;LOADER -&gt;RUNTIME &mdash;&gt;BOOTLOADER -&gt;OS
 机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。
 硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：
@@ -264,7 +264,7 @@ start: ljmp $0, $init init: rdtsc ## 读取时间戳，为一个64位的数字�
       
       <p>
         
-          <a href="https://chiiydd.github.io/2023/12/booting/" class="postShorten-excerpt_link link" aria-label="Open the post: Booting">Continue reading</a>
+          <a href="https://chiiydd.github.io/2023/12/osv%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90-boot16.s/" class="postShorten-excerpt_link link" aria-label="Open the post: OSV启动流程分析-boot16.S">Continue reading</a>
         
         
       </p>

@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    
+    <script type="application/ld+json">
+
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "OSV启动流程分析-boot16.S",
+  
+  "datePublished": "2023-12-22T22:31:54+08:00",
+  "dateModified": "2023-12-22T22:31:54+08:00",
+  "author": {
+    "@type": "Person",
+    "name": "Chiiydd",
+    
+    "image": "https://chiiydd.github.io/images/photo.jpg"
+    
+  },
+  "mainEntityOfPage": { 
+    "@type": "WebPage",
+    "@id": "https:\/\/chiiydd.github.io\/2023\/12\/osv%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90-boot16.s\/" 
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Chiiydd's Blog",
+    
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://chiiydd.github.io/images/photo.jpg"
+    }
+    
+  },
+  "description": "Table of Contents OSV的启动流程 osv-boot A20总线 Reference OSV的启动流程 常见的操作系统启动流程\nROM -\u0026gt;LOADER -\u0026gt;RUNTIME \u0026mdash;\u0026gt;BOOTLOADER -\u0026gt;OS\n机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。\n硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：\n第一部分为引导（PRE-BOOT）区，占了446个字节；\n第二部分为分区表（PARTITION TABLE），共有64个字节，记录硬盘的分区信息。\n预引导区的作用之一是找到标记为活动（ACTIVE）的分区，并将活动分区的引导区读入内存。剩余两个字节(0x55,0xaa)为结束标记。\nosv-boot 在osv中 boot16.S即为一般计算机上的MBR，\n首先其入口点为start,跳转到init\nstart: ljmp $0, $init init: rdtsc ## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中 mov %eax, mb_tsc1_lo ##保存时间戳低位 mov %edx, mb_tsc1_hi ## 保存时间戳高位 xor %ax, %ax ##将ax 置0 mov %ax, %ds ## ds es ss寄存器置0 mov %ax, %es mov %ax, %ss mov $0x7c00, %sp ## 初始化栈寄存器为0x7c00 mov $0x2401, %ax # enable a20 gate int $0x15 ## 向BIOS中断0x15传递0x2401参数，启用A20门，它会影响内存地址线的第20位，允许访问1MB以上的内存 lea int1342_boot_struct, %si ##将int1342_boot_struct的地址加载到si索引寄存器中 mov $0x42, %ah ## ah=0x42表示从硬盘中读取数据 mov $0x80, %dl ## dl中表示硬盘drive index,0x80表示第一个硬盘 int $0x13 movl $cmdline, mb_cmdline 继续从硬盘中读取数据",
+  "keywords": []
+}
+
+</script>
+    <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="generator" content="Hugo 0.121.1 with theme Tranquilpeak 0.5.3-BETA">
+<meta name="author" content="Chiiydd">
+<meta name="keywords" content="">
+<meta name="description" content="Table of Contents OSV的启动流程 osv-boot A20总线 Reference OSV的启动流程 常见的操作系统启动流程
+ROM -&gt;LOADER -&gt;RUNTIME &mdash;&gt;BOOTLOADER -&gt;OS
+机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。
+硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：
+第一部分为引导（PRE-BOOT）区，占了446个字节；
+第二部分为分区表（PARTITION TABLE），共有64个字节，记录硬盘的分区信息。
+预引导区的作用之一是找到标记为活动（ACTIVE）的分区，并将活动分区的引导区读入内存。剩余两个字节(0x55,0xaa)为结束标记。
+osv-boot 在osv中 boot16.S即为一般计算机上的MBR，
+首先其入口点为start,跳转到init
+start: ljmp $0, $init init: rdtsc ## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中 mov %eax, mb_tsc1_lo ##保存时间戳低位 mov %edx, mb_tsc1_hi ## 保存时间戳高位 xor %ax, %ax ##将ax 置0 mov %ax, %ds ## ds es ss寄存器置0 mov %ax, %es mov %ax, %ss mov $0x7c00, %sp ## 初始化栈寄存器为0x7c00 mov $0x2401, %ax # enable a20 gate int $0x15 ## 向BIOS中断0x15传递0x2401参数，启用A20门，它会影响内存地址线的第20位，允许访问1MB以上的内存 lea int1342_boot_struct, %si ##将int1342_boot_struct的地址加载到si索引寄存器中 mov $0x42, %ah ## ah=0x42表示从硬盘中读取数据 mov $0x80, %dl ## dl中表示硬盘drive index,0x80表示第一个硬盘 int $0x13 movl $cmdline, mb_cmdline 继续从硬盘中读取数据">
+
+
+<meta property="og:description" content="Table of Contents OSV的启动流程 osv-boot A20总线 Reference OSV的启动流程 常见的操作系统启动流程
+ROM -&gt;LOADER -&gt;RUNTIME &mdash;&gt;BOOTLOADER -&gt;OS
+机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。
+硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：
+第一部分为引导（PRE-BOOT）区，占了446个字节；
+第二部分为分区表（PARTITION TABLE），共有64个字节，记录硬盘的分区信息。
+预引导区的作用之一是找到标记为活动（ACTIVE）的分区，并将活动分区的引导区读入内存。剩余两个字节(0x55,0xaa)为结束标记。
+osv-boot 在osv中 boot16.S即为一般计算机上的MBR，
+首先其入口点为start,跳转到init
+start: ljmp $0, $init init: rdtsc ## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中 mov %eax, mb_tsc1_lo ##保存时间戳低位 mov %edx, mb_tsc1_hi ## 保存时间戳高位 xor %ax, %ax ##将ax 置0 mov %ax, %ds ## ds es ss寄存器置0 mov %ax, %es mov %ax, %ss mov $0x7c00, %sp ## 初始化栈寄存器为0x7c00 mov $0x2401, %ax # enable a20 gate int $0x15 ## 向BIOS中断0x15传递0x2401参数，启用A20门，它会影响内存地址线的第20位，允许访问1MB以上的内存 lea int1342_boot_struct, %si ##将int1342_boot_struct的地址加载到si索引寄存器中 mov $0x42, %ah ## ah=0x42表示从硬盘中读取数据 mov $0x80, %dl ## dl中表示硬盘drive index,0x80表示第一个硬盘 int $0x13 movl $cmdline, mb_cmdline 继续从硬盘中读取数据">
+<meta property="og:type" content="article">
+<meta property="og:title" content="OSV启动流程分析-boot16.S">
+<meta name="twitter:title" content="OSV启动流程分析-boot16.S">
+<meta property="og:url" content="https://chiiydd.github.io/2023/12/osv%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90-boot16.s/">
+<meta property="twitter:url" content="https://chiiydd.github.io/2023/12/osv%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90-boot16.s/">
+<meta property="og:site_name" content="Chiiydd&#39;s Blog">
+<meta property="og:description" content="Table of Contents OSV的启动流程 osv-boot A20总线 Reference OSV的启动流程 常见的操作系统启动流程
+ROM -&gt;LOADER -&gt;RUNTIME &mdash;&gt;BOOTLOADER -&gt;OS
+机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。
+硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：
+第一部分为引导（PRE-BOOT）区，占了446个字节；
+第二部分为分区表（PARTITION TABLE），共有64个字节，记录硬盘的分区信息。
+预引导区的作用之一是找到标记为活动（ACTIVE）的分区，并将活动分区的引导区读入内存。剩余两个字节(0x55,0xaa)为结束标记。
+osv-boot 在osv中 boot16.S即为一般计算机上的MBR，
+首先其入口点为start,跳转到init
+start: ljmp $0, $init init: rdtsc ## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中 mov %eax, mb_tsc1_lo ##保存时间戳低位 mov %edx, mb_tsc1_hi ## 保存时间戳高位 xor %ax, %ax ##将ax 置0 mov %ax, %ds ## ds es ss寄存器置0 mov %ax, %es mov %ax, %ss mov $0x7c00, %sp ## 初始化栈寄存器为0x7c00 mov $0x2401, %ax # enable a20 gate int $0x15 ## 向BIOS中断0x15传递0x2401参数，启用A20门，它会影响内存地址线的第20位，允许访问1MB以上的内存 lea int1342_boot_struct, %si ##将int1342_boot_struct的地址加载到si索引寄存器中 mov $0x42, %ah ## ah=0x42表示从硬盘中读取数据 mov $0x80, %dl ## dl中表示硬盘drive index,0x80表示第一个硬盘 int $0x13 movl $cmdline, mb_cmdline 继续从硬盘中读取数据">
+<meta name="twitter:description" content="Table of Contents OSV的启动流程 osv-boot A20总线 Reference OSV的启动流程 常见的操作系统启动流程
+ROM -&gt;LOADER -&gt;RUNTIME &mdash;&gt;BOOTLOADER -&gt;OS
+机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。
+硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：
+第一部分为引导（PRE-BOOT）区，占了446个字节；
+第二部分为分区表（PARTITION TABLE），共有64个字节，记录硬盘的分区信息。
+预引导区的作用之一是找到标记为活动（ACTIVE）的分区，并将活动分区的引导区读入内存。剩余两个字节(0x55,0xaa)为结束标记。
+osv-boot 在osv中 boot16.S即为一般计算机上的MBR，
+首先其入口点为start,跳转到init
+start: ljmp $0, $init init: rdtsc ## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中 mov %eax, mb_tsc1_lo ##保存时间戳低位 mov %edx, mb_tsc1_hi ## 保存时间戳高位 xor %ax, %ax ##将ax 置0 mov %ax, %ds ## ds es ss寄存器置0 mov %ax, %es mov %ax, %ss mov $0x7c00, %sp ## 初始化栈寄存器为0x7c00 mov $0x2401, %ax # enable a20 gate int $0x15 ## 向BIOS中断0x15传递0x2401参数，启用A20门，它会影响内存地址线的第20位，允许访问1MB以上的内存 lea int1342_boot_struct, %si ##将int1342_boot_struct的地址加载到si索引寄存器中 mov $0x42, %ah ## ah=0x42表示从硬盘中读取数据 mov $0x80, %dl ## dl中表示硬盘drive index,0x80表示第一个硬盘 int $0x13 movl $cmdline, mb_cmdline 继续从硬盘中读取数据">
+<meta property="og:locale" content="en-us">
+
+  
+    <meta property="article:published_time" content="2023-12-22T22:31:54">
+  
+  
+    <meta property="article:modified_time" content="2023-12-22T22:31:54">
+  
+  
+  
+    
+      <meta property="article:section" content="osv">
+    
+  
+  
+    
+      <meta property="article:tag" content="osv">
+    
+      <meta property="article:tag" content="汇编语言">
+    
+      <meta property="article:tag" content="bootloader">
+    
+  
+
+
+<meta name="twitter:card" content="summary">
+
+
+
+
+
+
+
+  <meta property="og:image" content="https://chiiydd.github.io/images/photo.jpg">
+  <meta property="twitter:image" content="https://chiiydd.github.io/images/photo.jpg">
+
+
+
+
+
+
+    <title>OSV启动流程分析-boot16.S</title>
+
+    <link rel="icon" href="https://chiiydd.github.io/favicon.png">
+    
+
+    
+
+    <link rel="canonical" href="https://chiiydd.github.io/2023/12/osv%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90-boot16.s/">
+
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha512-H9jrZiiopUdsLpg94A333EfumgUBpO9MdbxStdeITo+KEIMaNfHNvwyjjDJb+ERPaRS6DpyRlKbvPUasNItRyw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    
+    
+    <link rel="stylesheet" href="https://chiiydd.github.io/css/style-h6ccsoet3mzkbb0wngshlfbaweimexgqcxj0h5hu4h82olsdzz6wmqdkajm.min.css" />
+    
+    
+
+    
+      
+    
+    
+  </head>
+
+  <body>
+    <div id="blog">
+      <header id="header" data-behavior="4">
+  <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+  <div class="header-title">
+    <a class="header-title-link" href="https://chiiydd.github.io/" aria-label="Go to homepage">Chiiydd&#39;s Blog</a>
+  </div>
+  
+    
+      <a class="header-right-picture "
+         href="https://chiiydd.github.io/#about" aria-label="Open the link: /#about">
+    
+    
+    
+      
+        <img class="header-picture" src="https://chiiydd.github.io/images/photo.jpg" alt="Author&#39;s picture" />
+      
+    
+    </a>
+  
+</header>
+
+      <nav id="sidebar" data-behavior="4">
+  <div class="sidebar-container">
+    
+      <div class="sidebar-profile">
+        <a href="https://chiiydd.github.io/#about" aria-label="Read more about the author">
+          <img class="sidebar-profile-picture" src="https://chiiydd.github.io/images/photo.jpg" alt="Author&#39;s picture" />
+        </a>
+        <h4 class="sidebar-profile-name">Chiiydd</h4>
+        
+          <h5 class="sidebar-profile-bio">I&rsquo;m learning OS development.</h5>
+        
+      </div>
+    
+    <ul class="sidebar-buttons">
+      
+  <li class="sidebar-button">
+    
+      <a class="sidebar-button-link " href="https://chiiydd.github.io/" title="Home">
+    
+      <i class="sidebar-button-icon fas fa-lg fa-home" aria-hidden="true"></i>
+      
+      <span class="sidebar-button-desc">Home</span>
+    </a>
+  </li>
+
+  <li class="sidebar-button">
+    
+      <a class="sidebar-button-link " href="https://chiiydd.github.io/categories" title="Categories">
+    
+      <i class="sidebar-button-icon fas fa-lg fa-bookmark" aria-hidden="true"></i>
+      
+      <span class="sidebar-button-desc">Categories</span>
+    </a>
+  </li>
+
+  <li class="sidebar-button">
+    
+      <a class="sidebar-button-link " href="https://chiiydd.github.io/tags" title="Tags">
+    
+      <i class="sidebar-button-icon fas fa-lg fa-tags" aria-hidden="true"></i>
+      
+      <span class="sidebar-button-desc">Tags</span>
+    </a>
+  </li>
+
+  <li class="sidebar-button">
+    
+      <a class="sidebar-button-link " href="https://chiiydd.github.io/archives" title="Archives">
+    
+      <i class="sidebar-button-icon fas fa-lg fa-archive" aria-hidden="true"></i>
+      
+      <span class="sidebar-button-desc">Archives</span>
+    </a>
+  </li>
+
+  <li class="sidebar-button">
+    
+      <a class="sidebar-button-link " href="https://chiiydd.github.io/#about" title="About">
+    
+      <i class="sidebar-button-icon fas fa-lg fa-question" aria-hidden="true"></i>
+      
+      <span class="sidebar-button-desc">About</span>
+    </a>
+  </li>
+
+
+    </ul>
+    <ul class="sidebar-buttons">
+      
+  <li class="sidebar-button">
+    
+      <a class="sidebar-button-link " href="https://github.com/chiiydd" target="_blank" rel="noopener" title="GitHub">
+    
+      <i class="sidebar-button-icon fab fa-lg fa-github" aria-hidden="true"></i>
+      
+      <span class="sidebar-button-desc">GitHub</span>
+    </a>
+  </li>
+
+
+    </ul>
+    <ul class="sidebar-buttons">
+      
+
+    </ul>
+  </div>
+</nav>
+
+      
+
+      <div id="main" data-behavior="4"
+        class="
+               hasCoverMetaIn
+               ">
+        <article class="post" id="top">
+          
+          
+            <div class="post-header main-content-wrap text-left">
+  
+    <h1 class="post-title">
+      OSV启动流程分析-boot16.S
+    </h1>
+  
+  
+  <div class="postShorten-meta post-meta">
+    
+      <time datetime="2023-12-22T22:31:54&#43;08:00">
+        
+  December 22, 2023
+
+      </time>
+    
+    
+  
+  
+    <span>in</span>
+    
+      <a class="category-link" href="https://chiiydd.github.io/categories/osv">osv</a>
+    
+  
+
+  </div>
+
+</div>
+          
+          <div class="post-content markdown">
+            <div class="main-content-wrap">
+              <h1 id="table-of-contents">Table of Contents</h1>
+<nav id="TableOfContents">
+  <ul>
+    <li><a href="#osv的启动流程">OSV的启动流程</a>
+      <ul>
+        <li><a href="#osv-boot">osv-boot</a>
+          <ul>
+            <li><a href="#a20总线">A20总线</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#reference">Reference</a></li>
+  </ul>
+</nav>
+
+<h1 id="osv的启动流程">OSV的启动流程</h1>
+<p>常见的操作系统启动流程</p>
+<p>ROM -&gt;LOADER -&gt;RUNTIME &mdash;&gt;BOOTLOADER -&gt;OS</p>
+<p>机器上电后，所需要的第一个步骤就是从ROM中加载BIOS，然后进行硬件自检(Power On Self Test)，检查计算机需要的最基本的硬件(CPU、内存、磁盘、键盘等)。然后根据BIOS中的相关启动顺序的配置，进行加载LOADER。默认情况下，是查找磁盘的第一个扇区(Master Boot Record,MBR)。</p>
+<p>硬盘上第0磁道第一个扇区被称为 MBR，也就是 Master Boot Record，即主引导记录，它的大小是512字节，可里面却存放了预启动信息、分区表信息。可分为两部分：</p>
+<p>第一部分为引导（PRE-BOOT）区，占了446个字节；</p>
+<p>第二部分为分区表（PARTITION TABLE），共有64个字节，记录硬盘的分区信息。</p>
+<p>预引导区的作用之一是找到标记为活动（ACTIVE）的分区，并将活动分区的引导区读入内存。剩余两个字节(0x55,0xaa)为结束标记。</p>
+<h2 id="osv-boot">osv-boot</h2>
+<p>在osv中 boot16.S即为一般计算机上的MBR，</p>
+<p>首先其入口点为start,跳转到init</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-gas" data-lang="gas"><span style="display:flex;"><span>start:
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ljmp</span> <span style="color:#66d9ef">$0</span>, <span style="color:#66d9ef">$init</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-gas" data-lang="gas"><span style="display:flex;"><span>init:
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">rdtsc</span>   <span style="color:#75715e">## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %eax, <span style="color:#66d9ef">mb_tsc1_lo</span>  <span style="color:#75715e">##保存时间戳低位
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %edx, <span style="color:#66d9ef">mb_tsc1_hi</span>   <span style="color:#75715e">## 保存时间戳高位
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">xor</span> %ax, %ax      <span style="color:#75715e">##将ax 置0 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %ax, %ds        <span style="color:#75715e">## ds es ss寄存器置0 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %ax, %es
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %ax, %ss
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x7c00</span>, %sp          <span style="color:#75715e">## 初始化栈寄存器为0x7c00 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x2401</span>, %ax <span style="color:#75715e"># enable a20 gate
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">int</span> <span style="color:#66d9ef">$0x15</span>                <span style="color:#75715e">## 向BIOS中断0x15传递0x2401参数，启用A20门，它会影响内存地址线的第20位，允许访问1MB以上的内存
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">lea</span> <span style="color:#66d9ef">int1342_boot_struct</span>, %si                <span style="color:#75715e">##将int1342_boot_struct的地址加载到si索引寄存器中
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x42</span>, %ah                       <span style="color:#75715e">## ah=0x42表示从硬盘中读取数据
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x80</span>, %dl                       <span style="color:#75715e">## dl中表示硬盘drive index,0x80表示第一个硬盘
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">int</span> <span style="color:#66d9ef">$0x13</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">movl</span> <span style="color:#66d9ef">$cmdline</span>, <span style="color:#66d9ef">mb_cmdline</span>
+</span></span></code></pre></div><p>继续从硬盘中读取数据</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-gas" data-lang="gas"><span style="display:flex;"><span>read_disk:
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">lea</span> <span style="color:#66d9ef">int1342_struct</span>, %si     
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">mov</span> <span style="color:#66d9ef">$0x42</span>, %ah
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x80</span>, %dl
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">int</span> <span style="color:#66d9ef">$0x13</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">jc</span> <span style="color:#66d9ef">read_error</span> <span style="color:#75715e"># Notify the kernel about read errors
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">cli</span>         <span style="color:#75715e">##关中断
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">lgdtw</span> <span style="color:#66d9ef">gdt</span>    <span style="color:#75715e">##   加载全局描述符 GDT
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x11</span>, %ax
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">lmsw</span> %ax        <span style="color:#75715e">## load Machine  Status Word ，写入CR0寄存器低16位
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">##0x11即00010001,第0位置1表示开启保护模式，第4位置1表示使用的是387浮点协处理器否则是287协处理器。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">##On the 386, it allowed to specify whether the external math coprocessor was an 80287 or 80387 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">ljmp</span> <span style="color:#66d9ef">$8</span>, <span style="color:#66d9ef">$1f</span>    <span style="color:#75715e">##长跳转，$1f表示当前位置下面的&#34;1&#34;标签的地址。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">##虽然设置了CR0，但当前执行的代码仍处于16位实模式下。该条指令的作用是切换段地址，进入保护模式
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#960050;background-color:#1e0010">1:</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">.code32</span>     <span style="color:#75715e">##进入32位保护模式
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x10</span>, %ax <span style="color:#75715e">##将选择子0x10移动到寄存器ax中
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %eax, %ds   <span style="color:#75715e">##使得数据段寄存器 ds 指向选择子 0x10 对应的数据段
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %eax, %es   <span style="color:#75715e">##使得额外段寄存器es 指向0x10对应的数据段
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$tmp</span>, %esi   <span style="color:#75715e">##将tmp（0x8000）加载到源变址寄存器中
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">xfer</span>, %edi  <span style="color:#75715e">##将变量 xfer 的地址（偏移）加载到目的变址寄存器 edi
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x8000</span>, %ecx   <span style="color:#75715e">##将常数0x8000移动到计数寄存器ecx中。这个值将用于指定数据传输的字节数。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">rep</span> <span style="color:#a6e22e">movsb</span>    <span style="color:#75715e">##重复执行 movsb 指令，将 ecx 指定数量的字节从 esi 复制到 edi
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %edi, <span style="color:#66d9ef">xfer</span>   <span style="color:#75715e">##更新xfer索引
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x20</span>, %al   
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">mov</span> %eax, %ds
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, %es
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ljmpw</span> <span style="color:#66d9ef">$0x18</span>, <span style="color:#66d9ef">$1f</span>
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">1:</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">.code16</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x10</span>, %eax
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, %cr0   <span style="color:#75715e">##重新进入实模式
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">ljmpw</span> <span style="color:#66d9ef">$0</span>, <span style="color:#66d9ef">$1f</span>
+</span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">1:</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">xor</span> %ax, %ax
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %ax, %ds
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %ax, %es   <span style="color:#75715e">##置0 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">sti</span>     <span style="color:#75715e">##开中断  
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">addl</span> <span style="color:#66d9ef">$</span>(<span style="color:#ae81ff">0x8000</span> <span style="color:#960050;background-color:#1e0010">/</span> <span style="color:#ae81ff">0x200</span>), <span style="color:#66d9ef">lba</span> <span style="color:#75715e">## lba增加512字节，指向下一个扇区
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">decw</span> <span style="color:#66d9ef">count32</span>   <span style="color:#75715e">##计数器减1 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">jnz</span> <span style="color:#66d9ef">read_disk</span>   <span style="color:#75715e">##不为0则跳转到read_disk位置继续读取下一个扇区
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">jmp</span> <span style="color:#66d9ef">done_disk</span>   <span style="color:#75715e">##为0则完成读取，跳转到done_disk 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>read_error:
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %ah, <span style="color:#66d9ef">mb_disk_err</span>
+</span></span><span style="display:flex;"><span>done_disk:
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">rdtsc</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, <span style="color:#66d9ef">mb_tsc_disk_lo</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %edx, <span style="color:#66d9ef">mb_tsc_disk_hi</span>   <span style="color:#75715e">##记录读取完磁盘的时间戳
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$e820data</span>, %edi   <span style="color:#75715e">##将e820data的地址传入edi寄存器
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %edi, <span style="color:#66d9ef">mb_mmap_addr</span>     <span style="color:#75715e">## 将e820data的地址写入 mb_mmap_addr中 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">xor</span> %ebx, %ebx
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-gas" data-lang="gas"><span style="display:flex;"><span>more_e820:
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">##设置 int 0x15   ax=0xe820 的传入参数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$100</span>, %ecx                  <span style="color:#75715e">##指定ARDS结构的字节大小
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x534d4150</span>, %edx           <span style="color:#75715e">##固定签名标记,这个16进制是SMAP的ASCII码
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0xe820</span>, %ax              
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">add</span> <span style="color:#66d9ef">$4</span>, %edi    <span style="color:#75715e">##ES:DI是ARDS的缓冲区，BIOS会将获取到的内存信息写入EDI指向的地址
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">int</span> <span style="color:#66d9ef">$0x15</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">jc</span> <span style="color:#66d9ef">done_e820</span>       <span style="color:#75715e">##CF标志为1表示读取失败，跳转到done_e820 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %ecx, -<span style="color:#ae81ff">4</span>(%edi)    <span style="color:#75715e">##ecx寄存器中保存着写入的字节长度  
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">add</span> %ecx, %edi        <span style="color:#75715e">##edi保存的地址应当增加相对应的大小
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">test</span> %ebx, %ebx    <span style="color:#75715e">##  ebx保存着后续内存段信息的数量，ebx为0表示这是最后一个ARDS 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">jnz</span> <span style="color:#66d9ef">more_e820</span>
+</span></span><span style="display:flex;"><span>done_e820:
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sub</span> <span style="color:#66d9ef">$e820data</span>, %edi     <span style="color:#75715e">##完成写入，将edi和最初的e820data地址相减，得到写入的长度
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> %edi, <span style="color:#66d9ef">mb_mmap_len</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">cli</span>   <span style="color:#75715e">##关中断，并切换到保护模式
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x11</span>, %ax
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">lmsw</span> %ax
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ljmp</span> <span style="color:#66d9ef">$8</span>, <span style="color:#66d9ef">$1f</span>   
+</span></span><span style="display:flex;"><span><span style="color:#ae81ff">1</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">.code32</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$0x10</span>, %ax
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, %ds
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, %es
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, %gs
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, %fs
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, %ss
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">call</span> *<span style="color:#66d9ef">lzentry</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">rdtsc</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %eax, <span style="color:#66d9ef">mb_uncompress_lo</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> %edx, <span style="color:#66d9ef">mb_uncompress_hi</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mov</span> <span style="color:#66d9ef">$mb_info</span>, %ebx
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">call</span> *<span style="color:#66d9ef">start32</span>    <span style="color:#75715e">##跳转到boot.S中的start32标签
+</span></span></span></code></pre></div><p>总结boot16.S的工作:</p>
+<ul>
+<li>开启A20总线，以支持更大的地址空间</li>
+<li>从磁盘中加载osv的loader</li>
+<li>利用int 0x15 AX=0xe820 向BIOS获取内存大小信息，并存入e820data中</li>
+<li>跳转到boot.S</li>
+</ul>
+<h3 id="a20总线">A20总线</h3>
+<p>我们知道，8086/8088系列的CPU，在实模式下，按照段地址:偏移地址的方式来寻址。这种方式可以访问的最大内存地址为0xFFFF:0xFFFF，转换为物理地址0x10FFEF。而这个物理地址是21bit的，所以为了表示出这个最大的物理地址，至少需要21根地址线才能表示。</p>
+<p>然而，8086/8088地址总线只有20根。所以在8086/8088系列的CPU上，比如如果需要寻址0x10FFEF，则会因为地址线数目不够，被截断成0x0FFEF。再举个例子，如果要访问物理地址0x100000，则会被截断成0x00000。第21位会被省略。也就是说地址不断增长，直到0x100000的时候，会回到“0x00000”的实际物理地址。这个现象被称为“回环”现象。这种地址越界而产生回环的行为被认为是合法的，以至于当时很多程序利用到了这个特性（比如假定访问0x100000就是访问0x00000）。</p>
+<p>A20总线用来控制第21位（如果最低位编号为0，那第21位的编号就是20）及更高位是否有效。实际上可以想象成，第21位（及更高位）都接入了一个和A20总线的与门。当A20总线为1，则高位保持原来的。当A20总线为0，则高位就始终为0。这样，当A20总线为0的时候，8086/8088的回环现象将会保持。这么一来旧程序就可以兼容了。</p>
+<h1 id="reference">Reference</h1>
+<p><a href="http://blog.ccyg.studio/article/809f4839-9ad3-4a66-a599-aa445b915157/">X86 汇编语言 - 内存检测</a></p>
+
+              
+
+
+            </div>
+          </div>
+          <div id="post-footer" class="post-footer main-content-wrap">
+            
+              
+                
+                
+                  <div class="post-footer-tags">
+                    <span class="text-color-light text-small">TAGGED IN</span><br/>
+                    
+  <a class="tag tag--primary tag--small" href="https://chiiydd.github.io/tags/osv/">osv</a>
+
+  <a class="tag tag--primary tag--small" href="https://chiiydd.github.io/tags/%E6%B1%87%E7%BC%96%E8%AF%AD%E8%A8%80/">汇编语言</a>
+
+  <a class="tag tag--primary tag--small" href="https://chiiydd.github.io/tags/bootloader/">bootloader</a>
+
+                  </div>
+                
+              
+            
+            
+<div class="post-actions-wrap">
+  <nav >
+    <ul class="post-actions post-action-nav">
+      
+        <li class="post-action">
+          
+            <a class="post-action-btn btn btn--disabled">
+          
+              <i class="fa fa-angle-left"></i>
+              <span class="hide-xs hide-sm text-small icon-ml">NEXT</span>
+            </a>
+        </li>
+        <li class="post-action">
+          
+            <a class="post-action-btn btn btn--disabled">
+          
+              <span class="hide-xs hide-sm text-small icon-mr">PREVIOUS</span>
+              <i class="fa fa-angle-right"></i>
+            </a>
+        </li>
+      
+    </ul>
+  </nav>
+<ul class="post-actions post-action-share" >
+  
+    <li class="post-action hide-lg hide-md hide-sm">
+      <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+        <i class="fa fa-share-alt" aria-hidden="true"></i>
+      </a>
+    </li>
+    
+  
+  
+  <li class="post-action">
+    
+      <a class="post-action-btn btn btn--default" href="#top" aria-label="Back to top">
+      <i class="fa fa-arrow-up" aria-hidden="true"></i>
+    
+    </a>
+  </li>
+</ul>
+</div>
+
+
+            
+  
+
+
+          </div>
+        </article>
+        <footer id="footer" class="main-content-wrap">
+  <span class="copyrights">
+    &copy; 2023 Chiiydd. All Rights Reserved
+  </span>
+</footer>
+
+      </div>
+      <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+        
+<div class="post-actions-wrap">
+  <nav >
+    <ul class="post-actions post-action-nav">
+      
+        <li class="post-action">
+          
+            <a class="post-action-btn btn btn--disabled">
+          
+              <i class="fa fa-angle-left"></i>
+              <span class="hide-xs hide-sm text-small icon-ml">NEXT</span>
+            </a>
+        </li>
+        <li class="post-action">
+          
+            <a class="post-action-btn btn btn--disabled">
+          
+              <span class="hide-xs hide-sm text-small icon-mr">PREVIOUS</span>
+              <i class="fa fa-angle-right"></i>
+            </a>
+        </li>
+      
+    </ul>
+  </nav>
+<ul class="post-actions post-action-share" >
+  
+    <li class="post-action hide-lg hide-md hide-sm">
+      <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+        <i class="fa fa-share-alt" aria-hidden="true"></i>
+      </a>
+    </li>
+    
+  
+  
+  <li class="post-action">
+    
+      <a class="post-action-btn btn btn--default" href="#top" aria-label="Back to top">
+      <i class="fa fa-arrow-up" aria-hidden="true"></i>
+    
+    </a>
+  </li>
+</ul>
+</div>
+
+
+      </div>
+      
+
+    </div>
+    
+    <div id="about">
+  <div id="about-card">
+    <div id="about-btn-close">
+      <i class="fa fa-times"></i>
+    </div>
+    
+      <img id="about-card-picture" src="https://chiiydd.github.io/images/photo.jpg" alt="Author&#39;s picture" />
+    
+    <h4 id="about-card-name">Chiiydd</h4>
+    
+      <div id="about-card-bio">I&rsquo;m learning OS development.</div>
+    
+    
+      <div id="about-card-job">
+        <i class="fa fa-briefcase"></i>
+        <br/>
+        student
+      </div>
+    
+    
+      <div id="about-card-location">
+        <i class="fa fa-map-marker-alt"></i>
+        <br/>
+        Nanjing,China
+      </div>
+    
+  </div>
+</div>
+
+    
+
+    
+  
+    
+      <div id="cover" style="background-image:url('https://chiiydd.github.io/images/cover.png');"></div>
+    
+  
+
+
+    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/highlight.min.js" integrity="sha512-z+/WWfyD5tccCukM4VvONpEtLmbAm5LDu7eKiyMQJ9m7OfPEDL7gENyDRL3Yfe8XAuGsS2fS4xSMnl6d30kqGQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js" integrity="sha512-uURl+ZXMBrF4AwGaWmEetzrd+J5/8NRkWAvJx5sbPSSuOb0bZLqf+tOzniObO00BjHa/dD7gub9oCGMLPQHtQA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+<script src="https://chiiydd.github.io/js/script-yqzy9wdlzix4lbbwdnzvwx3egsne77earqmn73v9uno8aupuph8wfguccut.min.js"></script>
+
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-gE8KAQyFIzV1C9+GZ8TKJHZS2s+n7EjNtC+IMRn1l5+WYJTHOODUM6JSjZhFhqXmc7bG8Av6XXpckA4tYhflnw==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/apache.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-EWROca+bote+7Oaaar1F6y74iZj1r1F9rm/ly7o+/FwJopbBaWtsFDmaKoZDd3QiGU2pGacBirHJNivmGLYrow==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/go.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-GDVzAn0wpx1yVtQsRWmFc6PhJiLBPdUic+h4GWgljBh904O3JU10fk9EKNpVyIoPqkFn54rgL2QBG4BmUTMpiQ==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/http.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-UgZlma8NzkrDb/NWgmLIcTrH7i/CSnLLDRFqCSNF5NGPpjKmzyM25qcoXGOup8+cDakKyaiTDd7N4dyH4YT+IA==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/less.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-lot9koe73sfXIrUvIPM/UEhuMciN56RPyBdOyZgfO53P2lkWyyXN7J+njcxIIBRV+nVDQeiWtiXg+bLAJZDTfg==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/nginx.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-Zd3e7XxHP00TD0Imr0PIfeM0fl0v95kMWuhyAS3Wn1UTSXTkz0OhtRgBAr4JlmADRgiXr4x7lpeUdqaGN8xIog==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/puppet.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-qtqDO052iXMSP+5d/aE/jMtL9vIIGvONgTJziC2K/ZIB1yEGa55WVxGE9/08rSQ62EoDifS9SWVGZ7ihSLhzMA==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/scss.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-1NmkjnEDnwwwcu28KoQF8vs3oaPFokQHbmbtwGhFfeDsQZtVFI8zW2aE9O8yMYdpdyKV/5blE4pSWw4Z/Sv97w==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/stylus.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-B2wSfruPjr8EJL6IIzQr1eAuDwrsfIfccNf/LCEdxELCgC/S/ZMt/Uvk80aD79m7IqOqW+Sw8nbkvha20yZpzg==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/swift.min.js"></script>
+  
+
+  
+    <script async crossorigin="anonymous" defer integrity="sha512-28oDiQZGKUVN6wQ7PSLPNipOcmkCALXKwOi7bnkyFf8QiMZQxG9EQoy/iiNx6Zxj2cG2SbVa4dXKigQhu7GiFw==" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/languages/yaml.min.js"></script>
+  
+
+
+<script>
+$(document).ready(function() {
+  hljs.configure({ classPrefix: '', useBR: false });
+  $('pre.code-highlight > code, pre > code').each(function(i, block) {
+    if (!$(this).hasClass('codeblock')) {
+      $(this).addClass('codeblock');
+    }
+    hljs.highlightBlock(block);
+  });
+});
+</script>
+
+
+
+
+    
+  </body>
+</html>
+

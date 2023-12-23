@@ -1,10 +1,11 @@
 +++
-title = 'Booting'
+title = 'OSV启动流程分析-boot16.S'
 date = 2023-12-22T22:31:54+08:00
 draft = false 
 tags =["osv","汇编语言","bootloader"]
 categories=["osv"]
 +++
+{{< toc >}}
 
 # OSV的启动流程
 
@@ -27,12 +28,13 @@ ROM ->LOADER ->RUNTIME --->BOOTLOADER ->OS
 在osv中 boot16.S即为一般计算机上的MBR，
 
 首先其入口点为start,跳转到init
-```Assembly
+
+```gas
 start:
     ljmp $0, $init
 ```
 
-```assembly
+```gas 
 init:
     rdtsc   ## 读取时间戳，为一个64位的数字，高32位存在edx中，低32位存在eax中
     mov %eax, mb_tsc1_lo  ##保存时间戳低位
@@ -52,7 +54,7 @@ init:
 ```
 继续从硬盘中读取数据
 
-```assembly
+```gas
 read_disk:
     lea int1342_struct, %si     
     mov $0x42, %ah
@@ -109,7 +111,7 @@ done_disk:
 
 ```
 
-```assembly
+```gas 
 more_e820:
     ##设置 int 0x15   ax=0xe820 的传入参数
     mov $100, %ecx                  ##指定ARDS结构的字节大小
